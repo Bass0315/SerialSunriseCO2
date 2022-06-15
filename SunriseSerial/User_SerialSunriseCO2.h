@@ -50,10 +50,10 @@
 
 
 
-void read_sensor_id(uint8_t target);
-void read_sensor_config(uint8_t target);
-void change_measurement_mode(uint8_t target);
-void init_measurement(uint8_t target);
+bool read_sensor_id(uint8_t target);
+bool read_sensor_config(uint8_t target);
+bool change_measurement_mode(uint8_t target);
+bool init_measurement(uint8_t target);
 void read_sensor_measurements(uint8_t target);
 int modbus_read_response(int waitBytes, uint8_t funCode);
 int read_holding_registers(uint8_t comAddr, uint16_t regAddr, uint16_t numReg);

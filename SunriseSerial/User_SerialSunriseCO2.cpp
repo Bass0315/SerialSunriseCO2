@@ -3,7 +3,7 @@
 
 
 /* Reading period, in milliseconds. Default is 4 seconds */
-int readPeriodMs = 4000;
+int readPeriodMs = 1000;
 
 
 /**  
@@ -431,10 +431,11 @@ uint16_t _generate_crc(uint8_t pdu[], int len) {
  *         sensor's Vendor Name, ProductCode and MajorMinorRevision.
  * @retval None
  */
-void read_sensor_id(uint8_t target) {
+bool read_sensor_id(uint8_t target) {
   /* Vendor Name */
   if(read_device_id(target, 0) != 0) {
     Serial.println("EXCEPTION: Failed to read Vendor Name");
+    return false;
   }else {
     Serial.print("Vendor Name: ");
     Serial.println(device); 
@@ -443,6 +444,7 @@ void read_sensor_id(uint8_t target) {
   /* ProductCode */
   if(read_device_id(target, 1) != 0) {
     Serial.println("EXCEPTION: Failed to read ProductCode");
+    return false;
   }else {
     Serial.print("ProductCode: ");
     Serial.println(device);
@@ -451,10 +453,12 @@ void read_sensor_id(uint8_t target) {
   /* MajorMinorRevision */
   if(read_device_id(target, 2) != 0) {
     Serial.println("EXCEPTION: Failed to read MajorMinorRevision");
+    return false;
   }else {
     Serial.print("MajorMinorRevision: ");
     Serial.println(device);
   }
+  return true;
 }
 
 /**
@@ -466,13 +470,13 @@ void read_sensor_id(uint8_t target) {
  *         measurement configurations.
  * @retval None
  */
-void read_sensor_config(uint8_t target) {
+bool read_sensor_config(uint8_t target) {
   /* Function variables */
   uint16_t numReg = 0x0003;
 
   if(read_holding_registers(target, MEASUREMENT_MODE, numReg) != 0) {
     Serial.println("EXCEPTION: Failed to read Sensor Configurations");
-    return;
+    return false;
   }
 
   uint16_t measMode = values[0];
@@ -504,7 +508,7 @@ void read_sensor_config(uint8_t target) {
  *         changes.
  * @retval None
  */
-void change_measurement_mode(uint8_t target) {
+bool change_measurement_mode(uint8_t target) {
   /* Function variables */
   uint16_t numReg = 0x0001;
 
@@ -514,7 +518,7 @@ void change_measurement_mode(uint8_t target) {
     Serial.println("EXCEPTION: Faled to read Measurement Mode");
     Serial.println("Failed to change Measurement Mode");
     /* FATAL ERROR */
-    while(true); 
+    return false;
   }
 
   if(values[0] != SINGLE) {
@@ -522,13 +526,14 @@ void change_measurement_mode(uint8_t target) {
     if(write_multiple_registers(target, MEASUREMENT_MODE, numReg, change) != 0) {
       Serial.println("EXCEPTION: Failed to change Measurement Mode");
       /* FATAL ERROR */
-      while(true);
+      return false;
     }
     Serial.println("Sensor restart is required to apply changes");
     /* Turn-off sensor */
 
     /* Wait for sensor restart */
     delay(STABILIZATION_MS);
+    return true;
   }
 }
 
@@ -543,7 +548,7 @@ void change_measurement_mode(uint8_t target) {
  *         HR46 first time it starts a measurement.
  * @retval None
  */
-void init_measurement(uint8_t target) {
+bool init_measurement(uint8_t target) {
   /* Function variables */
   uint16_t numRegCmd = 0x0001;
   uint16_t startCommand[] = {1};
@@ -557,7 +562,7 @@ void init_measurement(uint8_t target) {
   if(write_multiple_registers(target, START_MEASUREMENT, numRegCmd, startCommand) != 0) {
     Serial.println("EXCEPTION: Failed to send measurement command");
     /* FATAL ERROR */
-    while(true);
+    return false;
   }
 
   /* Wait until ready pin goes low, 2 sec for default measurement parameters */
@@ -567,7 +572,7 @@ void init_measurement(uint8_t target) {
   if(read_input_registers(target, ERROR_STATUS, numRegRead) != 0) {
     Serial.println("EXCEPTION: Failed to read Measurements");
     /* FATAL ERROR */
-    while(true);
+    return false;
   }
   /* Read CO2 concentration */
   uint16_t co2Val = values[3];
@@ -579,7 +584,7 @@ void init_measurement(uint8_t target) {
   if(read_holding_registers(target, SENSOR_STATE, SENSOR_STATE_SZ) != 0) {
     Serial.println("EXCEPTION: Failed to read Status");
     /* FATAL ERROR */
-    while(true);
+    return false;
   }
   
   for(int n = 0 ; n < SENSOR_STATE_SZ ; n++) {
@@ -595,6 +600,10 @@ void init_measurement(uint8_t target) {
   Serial.print("Error Status: 0x");
   Serial.println(eStatus, HEX);
   Serial.println();
+  if(eStatus == 0)
+  {
+    return true;
+  }
 }
 
 /**
